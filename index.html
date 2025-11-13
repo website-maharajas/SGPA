@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MHSGPA - SGPA Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-slate-800">
+
+    <!-- Main Container -->
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+        
+        <!-- Header -->
+        <div class="bg-brand-700 p-8 text-center relative overflow-hidden">
+            <div class="relative z-10">
+                <h1 class="text-3xl font-extrabold text-white tracking-tight mb-1">MHSGPA</h1>
+                <p class="text-brand-100 text-sm font-medium opacity-90">Official Grade Point Calculator</p>
+            </div>
+            <!-- Decorative background circle -->
+            <div class="absolute top-0 left-0 w-full h-full bg-brand-600 opacity-20 rounded-full transform -translate-y-1/2 scale-150"></div>
+        </div>
+
+        <div class="p-6">
+            <!-- Error Message Area -->
+            <div id="error-msg" class="hidden bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded text-sm animate-pulse">
+                <p class="font-bold"><i class="fas fa-exclamation-circle"></i> Error</p>
+                <p id="error-text">Please check your inputs.</p>
+            </div>
+
+            <!-- Column Headers -->
+            <div class="grid grid-cols-12 gap-2 mb-2 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">
+                <div class="col-span-4 text-left pl-2">Credits</div>
+                <div class="col-span-6 text-left pl-2">Grade</div>
+                <div class="col-span-2"></div>
+            </div>
+
+            <!-- Course List -->
+            <div id="course-list" class="space-y-3 mb-6">
+                <!-- JavaScript will add rows here -->
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-3 mb-6">
+                <button onclick="addCourseRow()" class="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-lg transition duration-200 flex items-center justify-center gap-2 shadow-sm border border-slate-200">
+                    <i class="fas fa-plus"></i> Add Subject
+                </button>
+                <button onclick="calculateSGPA()" class="flex-1 py-3 px-4 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg shadow-md transition duration-200 flex items-center justify-center gap-2 transform active:scale-95">
+                    <i class="fas fa-calculator"></i> Calculate
+                </button>
+            </div>
+
+            <!-- Result Display -->
+            <div id="result-container" class="hidden opacity-0 transition-all duration-500 transform scale-95">
+                <div class="bg-gradient-to-br from-brand-50 to-white border border-brand-200 rounded-xl p-8 text-center shadow-inner">
+                    <p class="text-slate-500 font-semibold uppercase text-xs tracking-widest mb-2">Your SGPA Score</p>
+                    <h2 id="sgpa-value" class="text-6xl font-black text-brand-700 mb-2 tracking-tighter">0.00</h2>
+                    <div class="h-1 w-16 bg-brand-200 mx-auto mb-3 rounded-full"></div>
+                    <p id="details-text" class="text-xs text-brand-800 font-medium"></p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="bg-slate-50 px-6 py-4 border-t border-slate-100 text-center">
+            <p class="text-xs text-slate-400">
+                Formula: &Sigma;(Credits &times; Grade Points) / &Sigma;Credits
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const gradePoints = {
+            "A++": 10, "A+": 9, "A": 8, "B+": 7, "B": 6, 
+            "C+": 5, "C": 4, "D": 1, "E": 0
+        };
+
+        const courseList = document.getElementById('course-list');
+        const errorMsg = document.getElementById('error-msg');
+        const errorText = document.getElementById('error-text');
+        const resultContainer = document.getElementById('result-container');
+        const sgpaValue = document.getElementById('sgpa-value');
+        const detailsText = document.getElementById('details-text');
+
+        // --- Utilities ---
+        function showError(message) {
+            errorText.textContent = message;
+            errorMsg.classList.remove('hidden');
+            // Auto-hide error after 3 seconds
+            setTimeout(() => {
+                errorMsg.classList.add('hidden');
+            }, 3000);
+        }
+
+        function createGradeOptions() {
+            let options = '';
+            for (const [grade, point] of Object.entries(gradePoints)) {
+                options += `<option value="${grade}">${grade}</option>`;
+            }
+            return options;
+        }
+
+        // --- Core Logic ---
+        function addCourseRow() {
+            const rowId = 'row-' + Date.now() + Math.random().toString(16).slice(2);
+            const div = document.createElement('div');
+            div.className = 'course-row grid grid-cols-12 gap-2 items-center animate-[fadeIn_0.3s_ease-out]';
+            div.id = rowId;
+            div.innerHTML = `
+                <div class="col-span-4">
+                    <input type="number" class="credits-input w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition font-medium text-center" placeholder="Cr" min="0.5" step="0.5">
+                </div>
+                <div class="col-span-6">
+                    <select class="grade-select w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition appearance-none font-medium cursor-pointer">
+                        ${createGradeOptions()}
+                    </select>
+                </div>
+                <div class="col-span-2 flex justify-center">
+                    <button onclick="removeCourse('${rowId}')" class="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition duration-200">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            `;
+            courseList.appendChild(div);
+        }
+
+        function removeCourse(id) {
+            const row = document.getElementById(id);
+            if (courseList.children.length <= 1) {
+                showError("Keep at least one subject.");
+                return;
+            }
+            row.style.opacity = '0';
+            row.style.transform = 'translateX(20px)';
+            setTimeout(() => row.remove(), 300);
+        }
+
+        function calculateSGPA() {
+            const rows = document.querySelectorAll('.course-row');
+            let totalCredits = 0;
+            let totalWeightedPoints = 0;
+            let hasError = false;
+
+            if (rows.length === 0) {
+                showError("Add at least one subject.");
+                return;
+            }
+
+            rows.forEach(row => {
+                const creditInput = row.querySelector('.credits-input');
+                const gradeSelect = row.querySelector('.grade-select');
+                
+                const credits = parseFloat(creditInput.value);
+                const grade = gradeSelect.value;
+                const points = gradePoints[grade];
+
+                if (isNaN(credits) || credits <= 0) {
+                    creditInput.classList.add('border-red-500', 'bg-red-50');
+                    hasError = true;
+                } else {
+                    creditInput.classList.remove('border-red-500', 'bg-red-50');
+                    totalCredits += credits;
+                    totalWeightedPoints += (credits * points);
+                }
+            });
+
+            if (hasError) {
+                showError("Please enter valid credits.");
+                resultContainer.classList.add('hidden');
+                return;
+            }
+
+            const sgpa = totalCredits > 0 ? (totalWeightedPoints / totalCredits) : 0;
+
+            // Update UI
+            sgpaValue.textContent = sgpa.toFixed(2);
+            detailsText.textContent = `Total Credits: ${totalCredits} | Points Secured: ${totalWeightedPoints}`;
+            
+            resultContainer.classList.remove('hidden');
+            // Trigger animation
+            requestAnimationFrame(() => {
+                resultContainer.classList.remove('opacity-0', 'scale-95');
+                resultContainer.classList.add('opacity-100', 'scale-100');
+            });
+        }
+
+        // Initialize with 3 rows
+        window.onload = () => {
+            addCourseRow();
+            addCourseRow();
+            addCourseRow();
+        };
+    </script>
+    
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</body>
+</html>
